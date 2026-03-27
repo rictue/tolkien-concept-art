@@ -30,7 +30,7 @@ const FRONT_VIEW_PROMPT = `single character full body front view facing the view
 
 // Kontext Pro editing prompts — these transform the front view reference
 const KONTEXT_VIEW_PROMPTS = {
-  side: `Rotate this exact same character to show a full body right side profile view facing right. Keep the exact same clothing, armor, weapons, accessories, colors, and details. Standing straight with arms at sides, head to toe visible, white clean background, concept art style.`,
+  side: `Rotate this exact same character exactly 90 degrees to show a perfect full body side profile view. The character must face directly to the right showing only one side of the body, like a true orthographic side view. No three-quarter angle, strict 90-degree side silhouette. Keep the exact same clothing, armor, weapons, accessories, colors, and details. Standing straight with arms at sides, head to toe visible, white clean background, concept art style.`,
   tpose: `Show this exact same character in a perfect T-pose facing the viewer. Both arms extended perfectly horizontal straight out to the sides at exact shoulder height forming a cross shape, palms facing down, legs shoulder width apart. Keep the exact same clothing, armor, weapons, accessories, colors, and details. Head to toe visible, white clean background, concept art style.`
 };
 
