@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 3459;
 
 // ─── STYLE BASE ─────────────────────────────────────────────
 // Front view prompt for initial generation (Flux 1.1 Pro)
-const FRONT_VIEW_PROMPT = `single character full body front view facing the viewer, standing straight with arms relaxed at sides, head to toe visible, white clean background, concept art, fantasy medieval, digital painting, highly detailed armor and clothing, oil painting style inspired by Alan Lee and John Howe`;
+const FRONT_VIEW_PROMPT = `single character full body front view facing the viewer, standing straight with arms relaxed at sides, entire body from top of head to feet and shoes fully visible with space below feet, do not crop or cut off any body part, show feet and ground, white clean background, concept art, fantasy medieval, digital painting, highly detailed armor and clothing, oil painting style inspired by Alan Lee and John Howe`;
 
 // Kontext Pro editing prompts — these transform the front view reference
 const KONTEXT_VIEW_PROMPTS = {
