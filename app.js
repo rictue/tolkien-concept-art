@@ -12,7 +12,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/output', express.static(path.join(__dirname, 'output')));
+
+// Ensure output directory exists
+const outputDir = path.join(__dirname, 'output');
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+app.use('/output', express.static(outputDir));
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
