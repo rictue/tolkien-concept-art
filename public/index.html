@@ -832,35 +832,33 @@
       document.getElementById(imgIds.front).src = frontData.image;
       document.getElementById(imgIds.front).style.display = 'block';
 
-      // Step 4: Generate SIDE view with Kontext Pro (using front as reference)
+      // Step 4: Generate SIDE + T-POSE in parallel with Kontext Pro
       document.getElementById(phIds.side).textContent = 'Generating...';
-      updateLoadingSub('Painting Side View with Kontext Pro... (2/3)');
+      document.getElementById(phIds.tpose).textContent = 'Generating...';
+      updateLoadingSub('Painting Side View & T-Pose with Kontext Pro... (2-3/3)');
 
-      const sideRes = await fetch('/generate-kontext-view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'side', raceName, className })
-      });
+      const [sideRes, tposeRes] = await Promise.all([
+        fetch('/generate-kontext-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'side', raceName, className })
+        }),
+        fetch('/generate-kontext-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'tpose', raceName, className })
+        })
+      ]);
+
       const sideData = await sideRes.json();
       if (sideData.error) throw new Error(sideData.error);
-
       images.side = sideData.image;
       document.getElementById(phIds.side).style.display = 'none';
       document.getElementById(imgIds.side).src = sideData.image;
       document.getElementById(imgIds.side).style.display = 'block';
 
-      // Step 5: Generate T-POSE view with Kontext Pro (using front as reference)
-      document.getElementById(phIds.tpose).textContent = 'Generating...';
-      updateLoadingSub('Painting T-Pose with Kontext Pro... (3/3)');
-
-      const tposeRes = await fetch('/generate-kontext-view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'tpose', raceName, className })
-      });
       const tposeData = await tposeRes.json();
       if (tposeData.error) throw new Error(tposeData.error);
-
       images.tpose = tposeData.image;
       document.getElementById(phIds.tpose).style.display = 'none';
       document.getElementById(imgIds.tpose).src = tposeData.image;
