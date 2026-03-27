@@ -25,7 +25,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const PORT = process.env.PORT || 3459;
 
 // ─── STYLE BASE ─────────────────────────────────────────────
-const STYLE_BASE = `professional character concept art turnaround reference sheet, three full body views of the SAME character side by side on one image: front view on the left, right side profile view in the center, T-pose with arms extended straight out in the right, white clean background, consistent character design across all three views, same clothing and accessories in each view, digital painting, fantasy illustration style inspired by Alan Lee and John Howe, dramatic lighting, intricate details on armor and clothing, visible texture on materials, muted earth tones with selective vibrant accents, oil painting aesthetic with visible brushwork, character turnaround sheet for 3D modeling reference`;
+// Front view prompt for initial generation (Flux 1.1 Pro)
+const FRONT_VIEW_PROMPT = `single character full body front view facing the viewer, standing straight with arms relaxed at sides, head to toe visible, white clean background, concept art, fantasy medieval, digital painting, highly detailed armor and clothing, oil painting style inspired by Alan Lee and John Howe`;
+
+// Kontext Pro editing prompts — these transform the front view reference
+const KONTEXT_VIEW_PROMPTS = {
+  side: `Rotate this exact same character to show a full body right side profile view facing right. Keep the exact same clothing, armor, weapons, accessories, colors, and details. Standing straight with arms at sides, head to toe visible, white clean background, concept art style.`,
+  tpose: `Show this exact same character in a perfect T-pose facing the viewer. Both arms extended perfectly horizontal straight out to the sides at exact shoulder height forming a cross shape, palms facing down, legs shoulder width apart. Keep the exact same clothing, armor, weapons, accessories, colors, and details. Head to toe visible, white clean background, concept art style.`
+};
 
 const NEGATIVE_PROMPT = `blurry, deformed, extra limbs, bad anatomy, bad proportions, duplicate, extra arms, extra legs, fused fingers, too many fingers, long neck, mutation, poorly drawn face, poorly drawn hands, missing arms, missing legs, extra fingers, poorly drawn feet, disfigured, out of frame, watermark, text, signature, ugly, tiling, cut off, low quality, anime, cartoon, 3d render, CGI, chibi, modern clothing, guns, technology, multiple characters on same view, children`;
 
@@ -195,21 +202,48 @@ Rules:
 
   const characterDesc = completion.choices[0].message.content.trim();
 
-  const finalPrompt = `${STYLE_BASE}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`;
+  // Build front view prompt (for Flux 1.1 Pro initial generation)
+  const frontPrompt = `${FRONT_VIEW_PROMPT}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`;
 
-  return { characterDesc, finalPrompt, raceName: raceData.name, className: classData.name };
+  return { characterDesc, frontPrompt, raceName: raceData.name, className: classData.name };
 }
 
 // ─── IMAGE GENERATION ───────────────────────────────────────
+// Generate initial image with Flux 1.1 Pro (text-to-image)
 async function generateImage(prompt) {
   const output = await replicate.run('black-forest-labs/flux-1.1-pro', {
     input: {
       prompt: prompt,
-      aspect_ratio: '16:9',
+      aspect_ratio: '3:4',
       output_format: 'jpg',
       output_quality: 95,
       safety_tolerance: 5,
       prompt_upsampling: false
+    }
+  });
+
+  const imageUrl = typeof output === 'string' ? output : output?.url?.() || output;
+  const response = await fetch(imageUrl);
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  return buffer;
+}
+
+// Generate view using Kontext Pro (image-guided editing for consistency)
+// Takes a local file path and converts to data URI for Replicate
+async function generateKontextView(localImagePath, viewPrompt) {
+  // Read the saved front image and convert to data URI
+  const imageBuffer = fs.readFileSync(localImagePath);
+  const base64 = imageBuffer.toString('base64');
+  const dataUri = `data:image/jpeg;base64,${base64}`;
+
+  const output = await replicate.run('black-forest-labs/flux-kontext-pro', {
+    input: {
+      prompt: viewPrompt,
+      input_image: dataUri,
+      aspect_ratio: '3:4',
+      output_format: 'jpg',
+      safety_tolerance: 5
     }
   });
 
@@ -237,7 +271,7 @@ async function saveImage(buffer, raceName, className, viewType) {
 
 // ─── ROUTES ─────────────────────────────────────────────────
 
-// Preview: get prompt without generating image
+// Preview: get character description and front prompt without generating images
 app.get('/preview', async (req, res) => {
   try {
     const { race, charClass, gender, custom } = req.query;
@@ -253,8 +287,7 @@ app.get('/preview', async (req, res) => {
       className: result.className,
       gender,
       characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt,
-      negativePrompt: NEGATIVE_PROMPT
+      frontPrompt: result.frontPrompt
     });
   } catch (err) {
     console.error('Preview error:', err);
@@ -262,72 +295,58 @@ app.get('/preview', async (req, res) => {
   }
 });
 
-// Generate: create single reference sheet image
-app.get('/generate', async (req, res) => {
+// Step 1: Generate front view with Flux 1.1 Pro
+app.post('/generate-front', async (req, res) => {
   try {
-    const { race, charClass, gender, custom } = req.query;
+    const { frontPrompt, raceName, className } = req.body;
 
-    if (!race || !charClass || !gender) {
-      return res.status(400).json({ error: 'Missing required parameters' });
+    if (!frontPrompt) {
+      return res.status(400).json({ error: 'Missing frontPrompt' });
     }
 
-    const result = await generateCharacterPrompt(race, charClass, gender, custom || '');
-    const imageBuffer = await generateImage(result.finalPrompt);
-    const filename = await saveImage(imageBuffer, result.raceName, result.className, 'sheet');
+    console.log('Generating front view with Flux 1.1 Pro...');
+    const imageBuffer = await generateImage(frontPrompt);
+    const filename = await saveImage(imageBuffer, raceName || 'char', className || 'custom', 'front');
 
     res.json({
       success: true,
       image: `/output/${filename}`,
-      raceName: result.raceName,
-      className: result.className,
-      gender,
-      characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt
+      viewType: 'front'
     });
   } catch (err) {
-    console.error('Generate error:', err);
+    console.error('Generate front error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Regenerate: same params, new variation
-app.post('/regenerate', async (req, res) => {
+// Step 2: Generate side/tpose view with Kontext Pro using front as reference
+app.post('/generate-kontext-view', async (req, res) => {
   try {
-    const { race, charClass, gender, custom } = req.body;
+    const { frontImagePath, viewType, raceName, className } = req.body;
 
-    const result = await generateCharacterPrompt(race, charClass, gender, custom || '');
-    const imageBuffer = await generateImage(result.finalPrompt);
-    const filename = await saveImage(imageBuffer, result.raceName, result.className, 'sheet');
+    if (!frontImagePath || !viewType) {
+      return res.status(400).json({ error: 'Missing frontImagePath or viewType' });
+    }
+
+    const kontextPrompt = KONTEXT_VIEW_PROMPTS[viewType];
+    if (!kontextPrompt) {
+      return res.status(400).json({ error: `Invalid viewType: ${viewType}. Use 'side' or 'tpose'` });
+    }
+
+    // frontImagePath is like "/output/concept-xxx-front-123.jpg" — resolve to local file
+    const localPath = path.join(__dirname, frontImagePath);
+
+    console.log(`Generating ${viewType} view with Kontext Pro (ref: ${localPath})...`);
+    const imageBuffer = await generateKontextView(localPath, kontextPrompt);
+    const filename = await saveImage(imageBuffer, raceName || 'char', className || 'custom', viewType);
 
     res.json({
       success: true,
       image: `/output/${filename}`,
-      raceName: result.raceName,
-      className: result.className,
-      gender,
-      characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt
+      viewType
     });
   } catch (err) {
-    console.error('Regenerate error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Generate from exact prompt (no LLM) — single view
-app.post('/generate-from-prompt', async (req, res) => {
-  try {
-    const { prompt, raceName, className } = req.body;
-
-    const imageBuffer = await generateImage(prompt);
-    const filename = await saveImage(imageBuffer, raceName || 'custom', className || 'character', 'custom');
-
-    res.json({
-      success: true,
-      image: `/output/${filename}`
-    });
-  } catch (err) {
-    console.error('Generate from prompt error:', err);
+    console.error('Generate kontext view error:', err);
     res.status(500).json({ error: err.message });
   }
 });

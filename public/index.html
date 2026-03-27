@@ -282,6 +282,17 @@
       display: block;
     }
 
+    .view-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 0.9rem;
+      background: var(--bg-input);
+    }
+
     .view-label {
       position: absolute;
       top: 8px;
@@ -653,24 +664,43 @@
         <button class="btn btn-secondary" onclick="preview()">Preview Prompt</button>
         <button class="btn btn-primary" id="generateBtn" onclick="generate()">Forge Character</button>
       </div>
-      <div class="cost-hint">~$0.04 per generation (Flux 1.1 Pro)</div>
+      <div class="cost-hint">~$0.16 per character (1x Flux 1.1 Pro + 2x Kontext Pro)</div>
     </div>
 
     <!-- RIGHT: Result -->
     <div class="result-panel">
+      <!-- Placeholder / Loading -->
       <div class="image-container" id="imageContainer">
         <div class="placeholder" id="placeholder">
           <div class="placeholder-icon">&#9876;</div>
           <p>Select a race and class, then forge your character</p>
           <p style="margin-top: 12px; font-size: 0.85rem; color: #555;">
-            Front + Side + T-Pose in one sheet (~$0.04)
+            3 views: Front, Side, T-Pose (~$0.16 total)
           </p>
         </div>
-        <img id="resultImage" style="display: none;" />
         <div class="loading-overlay" id="loadingOverlay">
           <div class="forge-animation"></div>
           <div class="loading-text">Forging Character...</div>
           <div class="loading-sub" id="loadingSub">OpenAI is crafting the vision</div>
+        </div>
+      </div>
+
+      <!-- 3 View Cards -->
+      <div class="views-grid" id="viewsGrid" style="display: none;">
+        <div class="view-card" id="cardFront">
+          <span class="view-label">Front</span>
+          <div class="view-placeholder" id="phFront">Waiting...</div>
+          <img id="imgFront" style="display: none;" />
+        </div>
+        <div class="view-card" id="cardSide">
+          <span class="view-label">Side</span>
+          <div class="view-placeholder" id="phSide">Waiting...</div>
+          <img id="imgSide" style="display: none;" />
+        </div>
+        <div class="view-card" id="cardTpose">
+          <span class="view-label">T-Pose</span>
+          <div class="view-placeholder" id="phTpose">Waiting...</div>
+          <img id="imgTpose" style="display: none;" />
         </div>
       </div>
 
@@ -682,7 +712,7 @@
         </div>
         <div class="char-desc" id="charDesc"></div>
         <div class="action-row">
-          <button class="btn btn-action" onclick="downloadImage()">Download</button>
+          <button class="btn btn-action" onclick="downloadAll()">Download All</button>
           <button class="btn btn-action" onclick="regenerate()">New Variation</button>
           <button class="btn btn-action" onclick="copyPrompt()">Copy Prompt</button>
           <button class="btn btn-action" onclick="togglePrompt()">Show Prompt</button>
@@ -739,12 +769,12 @@
       try {
         const res = await fetch(`/preview?${qs}`);
         const data = await res.json();
-
         if (data.error) throw new Error(data.error);
 
         hideLoading();
+        currentResult = { ...data, ...params };
         showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
-        showPromptDisplay(data.fullPrompt);
+        showPromptDisplay(data.frontPrompt);
         showToast('Prompt ready — review and forge when ready');
       } catch (err) {
         hideLoading();
@@ -752,80 +782,135 @@
       }
     }
 
-    // ─── GENERATE ───────────────────────────
-    async function generate() {
-      const params = getParams();
+    // ─── GENERATE (Front → Kontext Side → Kontext T-Pose) ────
+    async function generateViews(params) {
       const qs = new URLSearchParams(params).toString();
       const btn = document.getElementById('generateBtn');
-
       btn.disabled = true;
+
+      // Step 1: Get character description + front prompt
       showLoading('Forging character...');
+      updateLoadingSub('OpenAI is crafting the vision...');
 
+      const previewRes = await fetch(`/preview?${qs}`);
+      const previewData = await previewRes.json();
+      if (previewData.error) throw new Error(previewData.error);
+
+      const { raceName, className, characterDesc, frontPrompt } = previewData;
+      showCharInfo(raceName, className, params.gender, characterDesc);
+
+      // Step 2: Show grid
+      document.getElementById('imageContainer').style.display = 'none';
+      const grid = document.getElementById('viewsGrid');
+      grid.style.display = 'grid';
+
+      const imgIds = { front: 'imgFront', side: 'imgSide', tpose: 'imgTpose' };
+      const phIds = { front: 'phFront', side: 'phSide', tpose: 'phTpose' };
+      const images = {};
+
+      // Reset placeholders
+      for (const v of ['front', 'side', 'tpose']) {
+        document.getElementById(imgIds[v]).style.display = 'none';
+        document.getElementById(phIds[v]).style.display = 'flex';
+        document.getElementById(phIds[v]).textContent = 'Waiting...';
+      }
+
+      // Step 3: Generate FRONT view with Flux 1.1 Pro
+      document.getElementById(phIds.front).textContent = 'Generating...';
+      updateLoadingSub('Painting Front View with Flux 1.1 Pro... (1/3)');
+
+      const frontRes = await fetch('/generate-front', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frontPrompt, raceName, className })
+      });
+      const frontData = await frontRes.json();
+      if (frontData.error) throw new Error(frontData.error);
+
+      images.front = frontData.image;
+      document.getElementById(phIds.front).style.display = 'none';
+      document.getElementById(imgIds.front).src = frontData.image;
+      document.getElementById(imgIds.front).style.display = 'block';
+
+      // Step 4: Generate SIDE view with Kontext Pro (using front as reference)
+      document.getElementById(phIds.side).textContent = 'Generating...';
+      updateLoadingSub('Painting Side View with Kontext Pro... (2/3)');
+
+      const sideRes = await fetch('/generate-kontext-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'side', raceName, className })
+      });
+      const sideData = await sideRes.json();
+      if (sideData.error) throw new Error(sideData.error);
+
+      images.side = sideData.image;
+      document.getElementById(phIds.side).style.display = 'none';
+      document.getElementById(imgIds.side).src = sideData.image;
+      document.getElementById(imgIds.side).style.display = 'block';
+
+      // Step 5: Generate T-POSE view with Kontext Pro (using front as reference)
+      document.getElementById(phIds.tpose).textContent = 'Generating...';
+      updateLoadingSub('Painting T-Pose with Kontext Pro... (3/3)');
+
+      const tposeRes = await fetch('/generate-kontext-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frontImagePath: frontData.image, viewType: 'tpose', raceName, className })
+      });
+      const tposeData = await tposeRes.json();
+      if (tposeData.error) throw new Error(tposeData.error);
+
+      images.tpose = tposeData.image;
+      document.getElementById(phIds.tpose).style.display = 'none';
+      document.getElementById(imgIds.tpose).src = tposeData.image;
+      document.getElementById(imgIds.tpose).style.display = 'block';
+
+      hideLoading();
+      currentResult = { images, frontPrompt, raceName, className, characterDesc, ...params };
+      return { images, frontPrompt, raceName, className, characterDesc, gender: params.gender };
+    }
+
+    async function generate() {
       try {
-        updateLoadingSub('OpenAI is crafting the vision...');
-        await sleep(500);
-        updateLoadingSub('Flux is painting the reference sheet...');
-
-        const res = await fetch(`/generate?${qs}`);
-        const data = await res.json();
-
-        if (data.error) throw new Error(data.error);
-
-        currentResult = { ...data, ...params };
-        showImage(data.image);
-        showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
+        const params = getParams();
+        const data = await generateViews(params);
         hidePromptDisplay();
         addToHistory(data);
-        showToast('Character forged — front, side & T-pose ready');
+        showToast('Character forged — 3 views ready');
       } catch (err) {
         hideLoading();
         showToast('Error: ' + err.message);
       } finally {
-        btn.disabled = false;
+        document.getElementById('generateBtn').disabled = false;
       }
     }
 
     // ─── REGENERATE ─────────────────────────
     async function regenerate() {
       if (!currentResult) return;
-
-      const btn = document.getElementById('generateBtn');
-      btn.disabled = true;
-      showLoading('Forging new variation...');
-
       try {
-        updateLoadingSub('Creating a new vision of this character...');
-
-        const res = await fetch('/regenerate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            race: currentResult.race,
-            charClass: currentResult.charClass,
-            gender: currentResult.gender,
-            custom: currentResult.custom
-          })
-        });
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        currentResult = { ...data, ...currentResult };
-        showImage(data.image);
-        showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
+        const params = {
+          race: currentResult.race,
+          charClass: currentResult.charClass,
+          gender: currentResult.gender,
+          custom: currentResult.custom
+        };
+        const data = await generateViews(params);
         addToHistory(data);
         showToast('New variation forged');
       } catch (err) {
         hideLoading();
         showToast('Error: ' + err.message);
       } finally {
-        btn.disabled = false;
+        document.getElementById('generateBtn').disabled = false;
       }
     }
 
     // ─── UI HELPERS ─────────────────────────
     function showLoading(text) {
-      document.getElementById('loadingOverlay').classList.add('active');
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.classList.add('active');
       document.querySelector('.loading-text').textContent = text;
     }
 
@@ -835,15 +920,6 @@
 
     function hideLoading() {
       document.getElementById('loadingOverlay').classList.remove('active');
-    }
-
-    function showImage(src) {
-      hideLoading();
-      const img = document.getElementById('resultImage');
-      const placeholder = document.getElementById('placeholder');
-      img.src = src;
-      img.style.display = 'block';
-      placeholder.style.display = 'none';
     }
 
     function showCharInfo(race, cls, gender, desc) {
@@ -858,8 +934,6 @@
       const el = document.getElementById('promptDisplay');
       document.getElementById('promptText').textContent = prompt;
       el.classList.add('visible');
-      currentResult = currentResult || {};
-      currentResult.fullPrompt = prompt;
     }
 
     function hidePromptDisplay() {
@@ -870,25 +944,29 @@
       const el = document.getElementById('promptDisplay');
       if (el.classList.contains('visible')) {
         el.classList.remove('visible');
-      } else if (currentResult?.fullPrompt) {
-        document.getElementById('promptText').textContent = currentResult.fullPrompt;
+      } else if (currentResult?.frontPrompt) {
+        document.getElementById('promptText').textContent = currentResult.frontPrompt;
         el.classList.add('visible');
       }
     }
 
     function copyPrompt() {
-      if (currentResult?.fullPrompt) {
-        navigator.clipboard.writeText(currentResult.fullPrompt);
-        showToast('Prompt copied to clipboard');
+      if (currentResult?.characterDesc) {
+        navigator.clipboard.writeText(currentResult.characterDesc);
+        showToast('Character description copied');
       }
     }
 
-    function downloadImage() {
-      if (currentResult?.image) {
-        const a = document.createElement('a');
-        a.href = currentResult.image;
-        a.download = currentResult.image.split('/').pop();
-        a.click();
+    function downloadAll() {
+      if (currentResult?.images) {
+        for (const view of ['front', 'side', 'tpose']) {
+          if (currentResult.images[view]) {
+            const a = document.createElement('a');
+            a.href = currentResult.images[view];
+            a.download = currentResult.images[view].split('/').pop();
+            a.click();
+          }
+        }
       }
     }
 
@@ -906,16 +984,16 @@
     // ─── HISTORY ────────────────────────────
     function addToHistory(data) {
       history.unshift({
-        image: data.image,
+        images: data.images,
         raceName: data.raceName,
         className: data.className,
         gender: data.gender,
         desc: data.characterDesc,
-        prompt: data.fullPrompt,
+        frontPrompt: data.frontPrompt,
         time: new Date().toLocaleString('tr-TR')
       });
 
-      if (history.length > 20) history.pop();
+      if (history.length > 10) history.pop();
       localStorage.setItem('forgeHistory', JSON.stringify(history));
       renderHistory();
     }
@@ -932,7 +1010,7 @@
       section.style.display = 'block';
       grid.innerHTML = history.map((item, i) => `
         <div class="history-item" onclick="loadHistory(${i})">
-          <img src="${item.image}" alt="${item.raceName}" loading="lazy" />
+          <img src="${item.images?.front || ''}" alt="${item.raceName}" loading="lazy" />
           <div class="history-item-info">
             <strong>${item.raceName} ${item.className}</strong>
             <span>${item.time}</span>
@@ -943,11 +1021,23 @@
 
     function loadHistory(index) {
       const item = history[index];
-      showImage(item.image);
+      document.getElementById('imageContainer').style.display = 'none';
+      const grid = document.getElementById('viewsGrid');
+      grid.style.display = 'grid';
+
+      for (const view of ['front', 'side', 'tpose']) {
+        const capView = view.charAt(0).toUpperCase() + view.slice(1);
+        document.getElementById('ph' + capView).style.display = 'none';
+        const img = document.getElementById('img' + capView);
+        img.src = item.images[view];
+        img.style.display = 'block';
+      }
+
       showCharInfo(item.raceName, item.className, item.gender || '', item.desc);
       currentResult = {
-        image: item.image,
-        fullPrompt: item.prompt,
+        images: item.images,
+        frontPrompt: item.frontPrompt,
+        characterDesc: item.desc,
         raceName: item.raceName,
         className: item.className
       };
