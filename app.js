@@ -25,7 +25,11 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const PORT = process.env.PORT || 3459;
 
 // ─── STYLE BASE ─────────────────────────────────────────────
-const STYLE_BASE = `highly detailed character concept art reference sheet, front view and right side view on same image, white clean background, full body standing pose, professional character design turnaround, digital painting, fantasy illustration style inspired by Alan Lee, John Howe, and Frank Frazetta, dramatic lighting, intricate details on armor and clothing, visible texture on materials, muted earth tones with selective vibrant accents, oil painting aesthetic with visible brushwork`;
+const STYLE_BASES = {
+  front: `highly detailed character concept art, front view, full body, standing straight facing the viewer, symmetrical pose, white clean background, professional character design, digital painting, fantasy illustration style inspired by Alan Lee, John Howe, and Frank Frazetta, dramatic lighting, intricate details on armor and clothing, visible texture on materials, muted earth tones with selective vibrant accents, oil painting aesthetic with visible brushwork`,
+  side: `highly detailed character concept art, right side profile view, full body, standing straight facing right, white clean background, professional character design, digital painting, fantasy illustration style inspired by Alan Lee, John Howe, and Frank Frazetta, dramatic lighting, intricate details on armor and clothing, visible texture on materials, muted earth tones with selective vibrant accents, oil painting aesthetic with visible brushwork`,
+  tpose: `highly detailed character concept art, front view, full body T-pose with arms extended straight out to the sides, palms facing down, legs slightly apart, symmetrical pose for 3D modeling reference, white clean background, professional character design turnaround, digital painting, fantasy illustration style inspired by Alan Lee, John Howe, and Frank Frazetta, dramatic lighting, intricate details on armor and clothing, visible texture on materials, muted earth tones with selective vibrant accents, oil painting aesthetic with visible brushwork`
+};
 
 const NEGATIVE_PROMPT = `blurry, deformed, extra limbs, bad anatomy, bad proportions, duplicate, extra arms, extra legs, fused fingers, too many fingers, long neck, mutation, poorly drawn face, poorly drawn hands, missing arms, missing legs, extra fingers, poorly drawn feet, disfigured, out of frame, watermark, text, signature, ugly, tiling, cut off, low quality, anime, cartoon, 3d render, CGI, chibi, modern clothing, guns, technology, multiple characters on same view, children`;
 
@@ -167,16 +171,16 @@ LORE: ${raceData.lore}
 CLASS: ${classData.name}
 GENDER: ${gender}
 
-Your job is to generate a SINGLE detailed visual prompt for an image generation AI. The prompt must describe ONE character shown in front view and right side view on the same image.
+Your job is to generate a detailed visual description of a single character for an image generation AI. This description will be used to generate 3 separate views (front, side, T-pose).
 
 Rules:
 - Be extremely specific about armor details, materials, colors, weathering
 - Include unique identifying features (scars, tattoos, jewelry, hair style)
-- Describe the character's posture and expression
+- Describe the character's facial expression
 - Add environmental hints (dust on boots, rain on cloak, etc.)
 - Keep it under 200 words
-- Do NOT include any meta-instructions like "front view" or "reference sheet" — those are added separately
-- Focus ONLY on describing the character's appearance
+- Do NOT include any pose or view instructions — those are added separately
+- Focus ONLY on describing the character's appearance and gear
 - Make each generation unique — vary armor types, color palettes, accessories, hair styles
 - Stay true to Tolkien's aesthetic: no flashy anime or over-the-top fantasy elements`;
 
@@ -196,10 +200,14 @@ Rules:
 
   const characterDesc = completion.choices[0].message.content.trim();
 
-  // Assemble final prompt
-  const finalPrompt = `${STYLE_BASE}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`;
+  // Assemble prompts for each view
+  const prompts = {
+    front: `${STYLE_BASES.front}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`,
+    side: `${STYLE_BASES.side}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`,
+    tpose: `${STYLE_BASES.tpose}, ${genderDesc}, ${raceData.base}, ${classData.gear}, ${characterDesc}`
+  };
 
-  return { characterDesc, finalPrompt, raceName: raceData.name, className: classData.name };
+  return { characterDesc, prompts, raceName: raceData.name, className: classData.name };
 }
 
 // ─── IMAGE GENERATION ───────────────────────────────────────
@@ -207,7 +215,7 @@ async function generateImage(prompt) {
   const output = await replicate.run('black-forest-labs/flux-1.1-pro', {
     input: {
       prompt: prompt,
-      aspect_ratio: '16:9',
+      aspect_ratio: '3:4',
       output_format: 'jpg',
       output_quality: 95,
       safety_tolerance: 5,
@@ -215,7 +223,6 @@ async function generateImage(prompt) {
     }
   });
 
-  // Flux returns a URL or buffer
   const imageUrl = typeof output === 'string' ? output : output?.url?.() || output;
   const response = await fetch(imageUrl);
   const buffer = Buffer.from(await response.arrayBuffer());
@@ -223,14 +230,23 @@ async function generateImage(prompt) {
   return buffer;
 }
 
+// Generate all 3 views in parallel
+async function generateAllViews(prompts) {
+  const [front, side, tpose] = await Promise.all([
+    generateImage(prompts.front),
+    generateImage(prompts.side),
+    generateImage(prompts.tpose)
+  ]);
+  return { front, side, tpose };
+}
+
 // ─── SAVE IMAGE ─────────────────────────────────────────────
-async function saveImage(buffer, raceName, className) {
+async function saveImage(buffer, raceName, className, viewType) {
   const timestamp = Date.now();
   const safeName = `${raceName}-${className}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const filename = `concept-${safeName}-${timestamp}.jpg`;
+  const filename = `concept-${safeName}-${viewType}-${timestamp}.jpg`;
   const filepath = path.join(__dirname, 'output', filename);
 
-  // Add subtle film grain for that hand-painted feel
   const processed = await sharp(buffer)
     .jpeg({ quality: 95 })
     .toBuffer();
@@ -257,7 +273,7 @@ app.get('/preview', async (req, res) => {
       className: result.className,
       gender,
       characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt,
+      prompts: result.prompts,
       negativePrompt: NEGATIVE_PROMPT
     });
   } catch (err) {
@@ -266,7 +282,7 @@ app.get('/preview', async (req, res) => {
   }
 });
 
-// Generate: create image
+// Generate: create all 3 views
 app.get('/generate', async (req, res) => {
   try {
     const { race, charClass, gender, custom } = req.query;
@@ -276,17 +292,26 @@ app.get('/generate', async (req, res) => {
     }
 
     const result = await generateCharacterPrompt(race, charClass, gender, custom || '');
-    const imageBuffer = await generateImage(result.finalPrompt);
-    const filename = await saveImage(imageBuffer, result.raceName, result.className);
+    const views = await generateAllViews(result.prompts);
+
+    const [frontFile, sideFile, tposeFile] = await Promise.all([
+      saveImage(views.front, result.raceName, result.className, 'front'),
+      saveImage(views.side, result.raceName, result.className, 'side'),
+      saveImage(views.tpose, result.raceName, result.className, 'tpose')
+    ]);
 
     res.json({
       success: true,
-      image: `/output/${filename}`,
+      images: {
+        front: `/output/${frontFile}`,
+        side: `/output/${sideFile}`,
+        tpose: `/output/${tposeFile}`
+      },
       raceName: result.raceName,
       className: result.className,
       gender,
       characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt
+      prompts: result.prompts
     });
   } catch (err) {
     console.error('Generate error:', err);
@@ -300,17 +325,26 @@ app.post('/regenerate', async (req, res) => {
     const { race, charClass, gender, custom } = req.body;
 
     const result = await generateCharacterPrompt(race, charClass, gender, custom || '');
-    const imageBuffer = await generateImage(result.finalPrompt);
-    const filename = await saveImage(imageBuffer, result.raceName, result.className);
+    const views = await generateAllViews(result.prompts);
+
+    const [frontFile, sideFile, tposeFile] = await Promise.all([
+      saveImage(views.front, result.raceName, result.className, 'front'),
+      saveImage(views.side, result.raceName, result.className, 'side'),
+      saveImage(views.tpose, result.raceName, result.className, 'tpose')
+    ]);
 
     res.json({
       success: true,
-      image: `/output/${filename}`,
+      images: {
+        front: `/output/${frontFile}`,
+        side: `/output/${sideFile}`,
+        tpose: `/output/${tposeFile}`
+      },
       raceName: result.raceName,
       className: result.className,
       gender,
       characterDesc: result.characterDesc,
-      fullPrompt: result.finalPrompt
+      prompts: result.prompts
     });
   } catch (err) {
     console.error('Regenerate error:', err);
@@ -318,13 +352,13 @@ app.post('/regenerate', async (req, res) => {
   }
 });
 
-// Generate from exact prompt (no LLM)
+// Generate from exact prompt (no LLM) — single view
 app.post('/generate-from-prompt', async (req, res) => {
   try {
     const { prompt, raceName, className } = req.body;
 
     const imageBuffer = await generateImage(prompt);
-    const filename = await saveImage(imageBuffer, raceName || 'custom', className || 'character');
+    const filename = await saveImage(imageBuffer, raceName || 'custom', className || 'character', 'custom');
 
     res.json({
       success: true,
