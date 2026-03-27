@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Middle-earth Forge — Character Concept Art</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold: #c9a84c;
+      --gold-dim: #8a7232;
+      --gold-bright: #e8d48b;
+      --bg-dark: #0a0a0a;
+      --bg-card: #111111;
+      --bg-input: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #d4d0c8;
+      --text-dim: #7a7a6e;
+      --red: #8b3a3a;
+      --green: #3a6b3a;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Crimson Text', Georgia, serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── HEADER ─────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 40px 20px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #0f0f0f 0%, var(--bg-dark) 100%);
+    }
+
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2.4rem;
+      color: var(--gold);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      text-shadow: 0 2px 20px rgba(201, 168, 76, 0.3);
+    }
+
+    header p {
+      color: var(--text-dim);
+      font-style: italic;
+      margin-top: 8px;
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+    }
+
+    /* ─── MAIN LAYOUT ────────────────────────── */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 20px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 30px;
+    }
+
+    /* ─── LEFT PANEL: CONTROLS ───────────────── */
+    .controls {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 24px;
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+    }
+
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--gold);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    /* Select styling */
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      border-radius: 3px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23c9a84c' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--gold-dim);
+    }
+
+    select option {
+      background: var(--bg-input);
+      color: var(--text);
+    }
+
+    /* Gender toggle */
+    .gender-toggle {
+      display: flex;
+      gap: 8px;
+    }
+
+    .gender-btn {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      text-align: center;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+
+    .gender-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, 0.08);
+    }
+
+    .gender-btn:hover:not(.active) {
+      border-color: var(--gold-dim);
+      color: var(--text);
+    }
+
+    /* Custom description */
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      border-radius: 3px;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--gold-dim);
+    }
+
+    textarea::placeholder {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 14px 20px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      border: 1px solid;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dim) 100%);
+      border-color: var(--gold);
+      color: #0a0a0a;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+      box-shadow: 0 0 20px rgba(201, 168, 76, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    .btn-action {
+      background: transparent;
+      border-color: var(--gold-dim);
+      color: var(--gold);
+      padding: 10px 16px;
+      font-size: 0.8rem;
+    }
+
+    .btn-action:hover {
+      background: rgba(201, 168, 76, 0.08);
+    }
+
+    /* Cost hint */
+    .cost-hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* ─── RIGHT PANEL: RESULT ────────────────── */
+    .result-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Image display */
+    .image-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      min-height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .image-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .placeholder {
+      text-align: center;
+      padding: 60px 40px;
+    }
+
+    .placeholder-icon {
+      font-size: 3rem;
+      color: var(--gold-dim);
+      opacity: 0.3;
+      margin-bottom: 20px;
+      font-family: 'Cinzel', serif;
+    }
+
+    .placeholder p {
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 1.1rem;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 10, 10, 0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .forge-animation {
+      width: 60px;
+      height: 60px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: forge-spin 1.2s linear infinite;
+    }
+
+    @keyframes forge-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      letter-spacing: 3px;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .loading-sub {
+      margin-top: 8px;
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    /* Character info card */
+    .char-info {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 20px;
+      display: none;
+    }
+
+    .char-info.visible {
+      display: block;
+    }
+
+    .char-info-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .char-info h3 {
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+    }
+
+    .char-info-meta {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    .char-desc {
+      line-height: 1.7;
+      color: var(--text);
+      font-size: 1rem;
+      padding: 12px;
+      background: var(--bg-input);
+      border-radius: 3px;
+      border-left: 2px solid var(--gold-dim);
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* Prompt display */
+    .prompt-display {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 20px;
+      display: none;
+    }
+
+    .prompt-display.visible {
+      display: block;
+    }
+
+    .prompt-display h4 {
+      font-family: 'Cinzel', serif;
+      color: var(--gold-dim);
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .prompt-text {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      word-break: break-word;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 12px;
+      background: var(--bg-input);
+      border-radius: 3px;
+    }
+
+    /* ─── HISTORY ─────────────────────────────── */
+    .history-section {
+      grid-column: 1 / -1;
+      margin-top: 20px;
+    }
+
+    .history-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--gold-dim);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .history-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .history-item:hover {
+      border-color: var(--gold-dim);
+    }
+
+    .history-item img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+    }
+
+    .history-item-info {
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+
+    .history-item-info strong {
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    .history-item-info span {
+      display: block;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────── */
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: var(--bg-card);
+      border: 1px solid var(--gold-dim);
+      color: var(--gold);
+      padding: 12px 20px;
+      border-radius: 4px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Middle-earth Forge</h1>
+    <p>Character Concept Art Generator</p>
+  </header>
+
+  <div class="container">
+    <!-- LEFT: Controls -->
+    <div class="controls">
+      <div class="section-title">Character Builder</div>
+
+      <div class="control-group">
+        <label>Race</label>
+        <select id="raceSelect">
+          <optgroup label="Elves">
+            <option value="noldor_elf">Noldor Elf — High Elves of Valinor</option>
+            <option value="sindar_elf">Sindar Elf — Grey Elves of Beleriand</option>
+            <option value="silvan_elf">Silvan Elf — Woodland Elves</option>
+          </optgroup>
+          <optgroup label="Men">
+            <option value="dunedain">Dúnedain — Rangers of the North</option>
+            <option value="rohirrim">Rohirrim — Horse-lords of Rohan</option>
+            <option value="numenorean">Númenórean — Men of Westernesse</option>
+            <option value="haradrim">Haradrim — Men of the South</option>
+          </optgroup>
+          <optgroup label="Dwarves">
+            <option value="dwarf">Dwarf — Children of Aulë</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="istari">Istari — Wizard / Maia</option>
+            <option value="orc">Orc — Corrupted Spawn</option>
+            <option value="uruk_hai">Uruk-hai — Saruman's Elite</option>
+            <option value="ent">Ent — Tree Shepherd</option>
+            <option value="balrog">Balrog — Shadow & Flame</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Class</label>
+        <select id="classSelect">
+          <optgroup label="Combat">
+            <option value="warrior">Warrior — Sword & Shield</option>
+            <option value="paladin">Paladin — Holy Knight</option>
+            <option value="berserker">Berserker — Rage Incarnate</option>
+            <option value="archer">Archer — Master Bowman</option>
+            <option value="assassin">Assassin — Shadow Blade</option>
+          </optgroup>
+          <optgroup label="Magic">
+            <option value="mage">Mage — Arcane Scholar</option>
+            <option value="necromancer">Necromancer — Dark Sorcerer</option>
+            <option value="healer">Healer — Herbalist</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="ranger">Ranger — Wanderer</option>
+            <option value="scout">Scout — Pathfinder</option>
+            <option value="smith">Blacksmith — Craftsman</option>
+            <option value="king">King — Royal Lord</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Gender</label>
+        <div class="gender-toggle">
+          <button class="gender-btn active" data-gender="male" onclick="setGender('male')">Male</button>
+          <button class="gender-btn" data-gender="female" onclick="setGender('female')">Female</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Custom Description (optional)</label>
+        <textarea id="customDesc" placeholder="e.g. 'A scarred veteran who lost an eye at Helm's Deep, carries a broken shield as a memento...'"></textarea>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="preview()">Preview Prompt</button>
+        <button class="btn btn-primary" id="generateBtn" onclick="generate()">Forge Character</button>
+      </div>
+      <div class="cost-hint">~$0.04 per generation (Flux 1.1 Pro)</div>
+    </div>
+
+    <!-- RIGHT: Result -->
+    <div class="result-panel">
+      <div class="image-container" id="imageContainer">
+        <div class="placeholder" id="placeholder">
+          <div class="placeholder-icon">&#9876;</div>
+          <p>Select a race and class, then forge your character</p>
+          <p style="margin-top: 12px; font-size: 0.85rem; color: #555;">
+            Preview the prompt first, or generate directly
+          </p>
+        </div>
+        <img id="resultImage" style="display: none;" />
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="forge-animation"></div>
+          <div class="loading-text">Forging Character...</div>
+          <div class="loading-sub" id="loadingSub">Groq is analyzing the concept</div>
+        </div>
+      </div>
+
+      <!-- Character Info -->
+      <div class="char-info" id="charInfo">
+        <div class="char-info-header">
+          <h3 id="charTitle"></h3>
+          <span class="char-info-meta" id="charMeta"></span>
+        </div>
+        <div class="char-desc" id="charDesc"></div>
+        <div class="action-row">
+          <button class="btn btn-action" onclick="downloadImage()">Download</button>
+          <button class="btn btn-action" onclick="regenerate()">New Variation</button>
+          <button class="btn btn-action" onclick="copyPrompt()">Copy Prompt</button>
+          <button class="btn btn-action" onclick="togglePrompt()">Show Prompt</button>
+        </div>
+      </div>
+
+      <!-- Prompt Display (hidden by default) -->
+      <div class="prompt-display" id="promptDisplay">
+        <h4>Full Prompt</h4>
+        <div class="prompt-text" id="promptText"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="history-section" id="historySection" style="display: none;">
+      <div class="history-title">Forge History</div>
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ─── STATE ──────────────────────────────
+    let currentGender = 'male';
+    let currentResult = null;
+    let history = JSON.parse(localStorage.getItem('forgeHistory') || '[]');
+
+    // ─── GENDER TOGGLE ──────────────────────
+    function setGender(g) {
+      currentGender = g;
+      document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.gender === g);
+      });
+    }
+
+    // ─── GET PARAMS ─────────────────────────
+    function getParams() {
+      return {
+        race: document.getElementById('raceSelect').value,
+        charClass: document.getElementById('classSelect').value,
+        gender: currentGender,
+        custom: document.getElementById('customDesc').value.trim()
+      };
+    }
+
+    // ─── PREVIEW ────────────────────────────
+    async function preview() {
+      const params = getParams();
+      const qs = new URLSearchParams(params).toString();
+
+      showLoading('Analyzing concept...');
+
+      try {
+        const res = await fetch(`/preview?${qs}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        hideLoading();
+        showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
+        showPromptDisplay(data.fullPrompt);
+        showToast('Prompt ready — review and forge when ready');
+      } catch (err) {
+        hideLoading();
+        showToast('Error: ' + err.message);
+      }
+    }
+
+    // ─── GENERATE ───────────────────────────
+    async function generate() {
+      const params = getParams();
+      const qs = new URLSearchParams(params).toString();
+      const btn = document.getElementById('generateBtn');
+
+      btn.disabled = true;
+      showLoading('Forging character...');
+
+      try {
+        updateLoadingSub('Groq is crafting the vision...');
+        await sleep(500);
+        updateLoadingSub('Flux is painting the character...');
+
+        const res = await fetch(`/generate?${qs}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        currentResult = { ...data, ...params };
+        showImage(data.image);
+        showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
+        hidePromptDisplay();
+        addToHistory(data);
+        showToast('Character forged successfully');
+      } catch (err) {
+        hideLoading();
+        showToast('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── REGENERATE ─────────────────────────
+    async function regenerate() {
+      if (!currentResult) return;
+
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      showLoading('Forging new variation...');
+
+      try {
+        updateLoadingSub('Creating a new vision of this character...');
+
+        const res = await fetch('/regenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            race: currentResult.race,
+            charClass: currentResult.charClass,
+            gender: currentResult.gender,
+            custom: currentResult.custom
+          })
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        currentResult = { ...data, ...currentResult };
+        showImage(data.image);
+        showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
+        addToHistory(data);
+        showToast('New variation forged');
+      } catch (err) {
+        hideLoading();
+        showToast('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── UI HELPERS ─────────────────────────
+    function showLoading(text) {
+      document.getElementById('loadingOverlay').classList.add('active');
+      document.querySelector('.loading-text').textContent = text;
+    }
+
+    function updateLoadingSub(text) {
+      document.getElementById('loadingSub').textContent = text;
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').classList.remove('active');
+    }
+
+    function showImage(src) {
+      hideLoading();
+      const img = document.getElementById('resultImage');
+      const placeholder = document.getElementById('placeholder');
+      img.src = src;
+      img.style.display = 'block';
+      placeholder.style.display = 'none';
+    }
+
+    function showCharInfo(race, cls, gender, desc) {
+      const info = document.getElementById('charInfo');
+      document.getElementById('charTitle').textContent = `${race} ${cls}`;
+      document.getElementById('charMeta').textContent = gender === 'male' ? 'Male' : 'Female';
+      document.getElementById('charDesc').textContent = desc;
+      info.classList.add('visible');
+    }
+
+    function showPromptDisplay(prompt) {
+      const el = document.getElementById('promptDisplay');
+      document.getElementById('promptText').textContent = prompt;
+      el.classList.add('visible');
+      currentResult = currentResult || {};
+      currentResult.fullPrompt = prompt;
+    }
+
+    function hidePromptDisplay() {
+      document.getElementById('promptDisplay').classList.remove('visible');
+    }
+
+    function togglePrompt() {
+      const el = document.getElementById('promptDisplay');
+      if (el.classList.contains('visible')) {
+        el.classList.remove('visible');
+      } else if (currentResult?.fullPrompt) {
+        document.getElementById('promptText').textContent = currentResult.fullPrompt;
+        el.classList.add('visible');
+      }
+    }
+
+    function copyPrompt() {
+      if (currentResult?.fullPrompt) {
+        navigator.clipboard.writeText(currentResult.fullPrompt);
+        showToast('Prompt copied to clipboard');
+      }
+    }
+
+    function downloadImage() {
+      if (currentResult?.image) {
+        const a = document.createElement('a');
+        a.href = currentResult.image;
+        a.download = currentResult.image.split('/').pop();
+        a.click();
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    // ─── HISTORY ────────────────────────────
+    function addToHistory(data) {
+      history.unshift({
+        image: data.image,
+        raceName: data.raceName,
+        className: data.className,
+        gender: data.gender,
+        desc: data.characterDesc,
+        prompt: data.fullPrompt,
+        time: new Date().toLocaleString('tr-TR')
+      });
+
+      if (history.length > 20) history.pop();
+      localStorage.setItem('forgeHistory', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const section = document.getElementById('historySection');
+      const grid = document.getElementById('historyGrid');
+
+      if (history.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      grid.innerHTML = history.map((item, i) => `
+        <div class="history-item" onclick="loadHistory(${i})">
+          <img src="${item.image}" alt="${item.raceName}" loading="lazy" />
+          <div class="history-item-info">
+            <strong>${item.raceName} ${item.className}</strong>
+            <span>${item.time}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function loadHistory(index) {
+      const item = history[index];
+      showImage(item.image);
+      showCharInfo(item.raceName, item.className, item.gender || '', item.desc);
+      currentResult = {
+        image: item.image,
+        fullPrompt: item.prompt,
+        raceName: item.raceName,
+        className: item.className
+      };
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Init
+    renderHistory();
+  </script>
+</body>
+</html>

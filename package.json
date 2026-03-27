@@ -1,0 +1,17 @@
+{
+  "name": "tolkien-concept-art",
+  "version": "1.0.0",
+  "description": "Tolkien-inspired character concept art generator",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "replicate": "^1.0.1",
+    "groq-sdk": "^0.5.0",
+    "sharp": "^0.34.5"
+  }
+}
