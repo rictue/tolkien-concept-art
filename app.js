@@ -1,6 +1,6 @@
 import express from 'express';
 import Replicate from 'replicate';
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/output', express.static(path.join(__dirname, 'output')));
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const PORT = process.env.PORT || 3459;
 
@@ -179,8 +179,8 @@ Rules:
     ? `Generate a character description based on this concept: "${customDesc}". Incorporate the race and class traits naturally.`
     : `Generate a unique ${raceData.name} ${classData.name} character. Be creative with the specific details — make this character memorable and distinct.`;
 
-  const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4.1-nano',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }

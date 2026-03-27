@@ -11,7 +11,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "replicate": "^1.0.1",
-    "groq-sdk": "^0.5.0",
+    "openai": "^4.73.0",
     "sharp": "^0.34.5"
   }
 }
