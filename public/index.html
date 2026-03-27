@@ -653,7 +653,7 @@
         <button class="btn btn-secondary" onclick="preview()">Preview Prompt</button>
         <button class="btn btn-primary" id="generateBtn" onclick="generate()">Forge Character</button>
       </div>
-      <div class="cost-hint">~$0.12 per generation (3x Flux 1.1 Pro)</div>
+      <div class="cost-hint">~$0.04 per generation (Flux 1.1 Pro)</div>
     </div>
 
     <!-- RIGHT: Result -->
@@ -663,29 +663,14 @@
           <div class="placeholder-icon">&#9876;</div>
           <p>Select a race and class, then forge your character</p>
           <p style="margin-top: 12px; font-size: 0.85rem; color: #555;">
-            3 views: Front, Side, T-Pose (~$0.12 total)
+            Front + Side + T-Pose in one sheet (~$0.04)
           </p>
         </div>
+        <img id="resultImage" style="display: none;" />
         <div class="loading-overlay" id="loadingOverlay">
           <div class="forge-animation"></div>
           <div class="loading-text">Forging Character...</div>
           <div class="loading-sub" id="loadingSub">OpenAI is crafting the vision</div>
-        </div>
-      </div>
-
-      <!-- 3 View Cards (hidden until generated) -->
-      <div class="views-grid" id="viewsGrid" style="display: none;">
-        <div class="view-card">
-          <span class="view-label">Front</span>
-          <img id="imgFront" />
-        </div>
-        <div class="view-card">
-          <span class="view-label">Side</span>
-          <img id="imgSide" />
-        </div>
-        <div class="view-card">
-          <span class="view-label">T-Pose</span>
-          <img id="imgTpose" />
         </div>
       </div>
 
@@ -697,7 +682,7 @@
         </div>
         <div class="char-desc" id="charDesc"></div>
         <div class="action-row">
-          <button class="btn btn-action" onclick="downloadAll()">Download All</button>
+          <button class="btn btn-action" onclick="downloadImage()">Download</button>
           <button class="btn btn-action" onclick="regenerate()">New Variation</button>
           <button class="btn btn-action" onclick="copyPrompt()">Copy Prompt</button>
           <button class="btn btn-action" onclick="togglePrompt()">Show Prompt</button>
@@ -759,8 +744,7 @@
 
         hideLoading();
         showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
-        showPromptDisplay(data.prompts.front);
-        currentResult = { ...data, ...params };
+        showPromptDisplay(data.fullPrompt);
         showToast('Prompt ready — review and forge when ready');
       } catch (err) {
         hideLoading();
@@ -780,7 +764,7 @@
       try {
         updateLoadingSub('OpenAI is crafting the vision...');
         await sleep(500);
-        updateLoadingSub('Flux is painting 3 views in parallel...');
+        updateLoadingSub('Flux is painting the reference sheet...');
 
         const res = await fetch(`/generate?${qs}`);
         const data = await res.json();
@@ -788,11 +772,11 @@
         if (data.error) throw new Error(data.error);
 
         currentResult = { ...data, ...params };
-        showImages(data.images);
+        showImage(data.image);
         showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
         hidePromptDisplay();
         addToHistory(data);
-        showToast('Character forged — 3 views ready');
+        showToast('Character forged — front, side & T-pose ready');
       } catch (err) {
         hideLoading();
         showToast('Error: ' + err.message);
@@ -810,7 +794,7 @@
       showLoading('Forging new variation...');
 
       try {
-        updateLoadingSub('Creating 3 new views of this character...');
+        updateLoadingSub('Creating a new vision of this character...');
 
         const res = await fetch('/regenerate', {
           method: 'POST',
@@ -826,8 +810,8 @@
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        currentResult = { ...data, race: currentResult.race, charClass: currentResult.charClass, gender: currentResult.gender, custom: currentResult.custom };
-        showImages(data.images);
+        currentResult = { ...data, ...currentResult };
+        showImage(data.image);
         showCharInfo(data.raceName, data.className, data.gender, data.characterDesc);
         addToHistory(data);
         showToast('New variation forged');
@@ -842,7 +826,6 @@
     // ─── UI HELPERS ─────────────────────────
     function showLoading(text) {
       document.getElementById('loadingOverlay').classList.add('active');
-      document.getElementById('imageContainer').style.display = 'flex';
       document.querySelector('.loading-text').textContent = text;
     }
 
@@ -854,16 +837,13 @@
       document.getElementById('loadingOverlay').classList.remove('active');
     }
 
-    function showImages(images) {
+    function showImage(src) {
       hideLoading();
-      document.getElementById('imageContainer').style.display = 'none';
-      document.getElementById('placeholder').style.display = 'none';
-
-      const grid = document.getElementById('viewsGrid');
-      document.getElementById('imgFront').src = images.front;
-      document.getElementById('imgSide').src = images.side;
-      document.getElementById('imgTpose').src = images.tpose;
-      grid.style.display = 'grid';
+      const img = document.getElementById('resultImage');
+      const placeholder = document.getElementById('placeholder');
+      img.src = src;
+      img.style.display = 'block';
+      placeholder.style.display = 'none';
     }
 
     function showCharInfo(race, cls, gender, desc) {
@@ -878,6 +858,8 @@
       const el = document.getElementById('promptDisplay');
       document.getElementById('promptText').textContent = prompt;
       el.classList.add('visible');
+      currentResult = currentResult || {};
+      currentResult.fullPrompt = prompt;
     }
 
     function hidePromptDisplay() {
@@ -888,27 +870,25 @@
       const el = document.getElementById('promptDisplay');
       if (el.classList.contains('visible')) {
         el.classList.remove('visible');
-      } else if (currentResult?.prompts) {
-        document.getElementById('promptText').textContent = currentResult.prompts.front;
+      } else if (currentResult?.fullPrompt) {
+        document.getElementById('promptText').textContent = currentResult.fullPrompt;
         el.classList.add('visible');
       }
     }
 
     function copyPrompt() {
-      if (currentResult?.prompts) {
-        navigator.clipboard.writeText(currentResult.prompts.front);
+      if (currentResult?.fullPrompt) {
+        navigator.clipboard.writeText(currentResult.fullPrompt);
         showToast('Prompt copied to clipboard');
       }
     }
 
-    function downloadAll() {
-      if (currentResult?.images) {
-        ['front', 'side', 'tpose'].forEach(view => {
-          const a = document.createElement('a');
-          a.href = currentResult.images[view];
-          a.download = currentResult.images[view].split('/').pop();
-          a.click();
-        });
+    function downloadImage() {
+      if (currentResult?.image) {
+        const a = document.createElement('a');
+        a.href = currentResult.image;
+        a.download = currentResult.image.split('/').pop();
+        a.click();
       }
     }
 
@@ -926,16 +906,16 @@
     // ─── HISTORY ────────────────────────────
     function addToHistory(data) {
       history.unshift({
-        images: data.images,
+        image: data.image,
         raceName: data.raceName,
         className: data.className,
         gender: data.gender,
         desc: data.characterDesc,
-        prompts: data.prompts,
+        prompt: data.fullPrompt,
         time: new Date().toLocaleString('tr-TR')
       });
 
-      if (history.length > 10) history.pop();
+      if (history.length > 20) history.pop();
       localStorage.setItem('forgeHistory', JSON.stringify(history));
       renderHistory();
     }
@@ -952,7 +932,7 @@
       section.style.display = 'block';
       grid.innerHTML = history.map((item, i) => `
         <div class="history-item" onclick="loadHistory(${i})">
-          <img src="${item.images?.front || ''}" alt="${item.raceName}" loading="lazy" />
+          <img src="${item.image}" alt="${item.raceName}" loading="lazy" />
           <div class="history-item-info">
             <strong>${item.raceName} ${item.className}</strong>
             <span>${item.time}</span>
@@ -963,11 +943,11 @@
 
     function loadHistory(index) {
       const item = history[index];
-      showImages(item.images);
+      showImage(item.image);
       showCharInfo(item.raceName, item.className, item.gender || '', item.desc);
       currentResult = {
-        images: item.images,
-        prompts: item.prompts,
+        image: item.image,
+        fullPrompt: item.prompt,
         raceName: item.raceName,
         className: item.className
       };
