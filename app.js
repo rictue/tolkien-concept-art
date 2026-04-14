@@ -259,7 +259,9 @@ async function saveImage(buffer, raceName, className, viewType) {
   const timestamp = Date.now();
   const safeName = `${raceName}-${className}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const filename = `concept-${safeName}-${viewType}-${timestamp}.jpg`;
-  const filepath = path.join(__dirname, 'output', filename);
+  const dir = path.join(__dirname, 'output');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const filepath = path.join(dir, filename);
 
   const processed = await sharp(buffer)
     .jpeg({ quality: 95 })
